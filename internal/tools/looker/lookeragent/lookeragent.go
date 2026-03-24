@@ -135,7 +135,7 @@ func (t Tool) Invoke(ctx context.Context, resourceMgr tools.SourceProvider, para
 		return resp, nil
 	case "get":
 		if agentId == "" {
-			return nil, util.NewClientServerError(fmt.Sprintf("%s operation: agent_id must be specified", operation), http.StatusInternalServerError, nil)
+			return nil, util.NewClientServerError(fmt.Sprintf("%s operation: agent_id must be specified", operation), http.StatusBadRequest, nil)
 		}
 		resp, err := sdk.GetAgent(agentId, "", source.LookerApiSettings())
 		if err != nil {
@@ -144,7 +144,7 @@ func (t Tool) Invoke(ctx context.Context, resourceMgr tools.SourceProvider, para
 		return resp, nil
 	case "create":
 		if name == "" {
-			return nil, util.NewClientServerError(fmt.Sprintf("%s operation: name must be specified", operation), http.StatusInternalServerError, nil)
+			return nil, util.NewClientServerError(fmt.Sprintf("%s operation: name must be specified", operation), http.StatusBadRequest, nil)
 		}
 		body := v4.WriteAgent{
 			Name: &name,
@@ -156,7 +156,7 @@ func (t Tool) Invoke(ctx context.Context, resourceMgr tools.SourceProvider, para
 		return resp, nil
 	case "delete":
 		if agentId == "" {
-			return nil, util.NewClientServerError(fmt.Sprintf("%s operation: agent_id must be specified", operation), http.StatusInternalServerError, nil)
+			return nil, util.NewClientServerError(fmt.Sprintf("%s operation: agent_id must be specified", operation), http.StatusBadRequest, nil)
 		}
 		resp, err := sdk.DeleteAgent(agentId, "", source.LookerApiSettings())
 		if err != nil {
@@ -164,7 +164,7 @@ func (t Tool) Invoke(ctx context.Context, resourceMgr tools.SourceProvider, para
 		}
 		return resp, nil
 	default:
-		return nil, util.NewClientServerError(fmt.Sprintf("unknown operation: %s. Must be one of `list`, `get`, `create`, or `delete`", operation), http.StatusInternalServerError, nil)
+		return nil, util.NewClientServerError(fmt.Sprintf("unknown operation: %s. Must be one of `list`, `get`, `create`, or `delete`", operation), http.StatusBadRequest, nil)
 	}
 }
 
