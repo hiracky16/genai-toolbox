@@ -38,14 +38,14 @@ func TestParseFromYamlLookerAgent(t *testing.T) {
 			desc: "basic example",
 			in: `
             kind: tool
-            name: example_tool
+            name: agent_manage
             type: looker-agent
             source: my-instance
             description: some description
                                 `,
 			want: server.ToolConfigs{
-				"example_tool": lkr.Config{
-					Name:         "example_tool",
+				"agent_manage": lkr.Config{
+					Name:         "agent_manage",
 					Type:         "looker-agent",
 					Source:       "my-instance",
 					Description:  "some description",
