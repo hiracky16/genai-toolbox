@@ -82,13 +82,13 @@ func TestFailParseFromYamlLookerAgent(t *testing.T) {
 			desc: "Invalid method",
 			in: `
             kind: tool
-            name: example_tool
+            name: agent_manage
             type: looker-agent
             source: my-instance
             method: GOT
             description: some description
                         `,
-			err: "error unmarshaling tool: unable to parse tool \"example_tool\" as type \"looker-agent\": [3:1] unknown field \"method\"\n   1 | authRequired: []\n   2 | description: some description\n>  3 | method: GOT\n       ^\n   4 | name: example_tool\n   5 | source: my-instance\n   6 | type: looker-agent",
+			err: "error unmarshaling tool: unable to parse tool \"agent_manage\" as type \"looker-agent\": [3:1] unknown field \"method\"\n   1 | authRequired: []\n   2 | description: some description\n>  3 | method: GOT\n       ^\n   4 | name: agent_manage\n   5 | source: my-instance\n   6 | type: looker-agent",
 		},
 	}
 	for _, tc := range tcs {
