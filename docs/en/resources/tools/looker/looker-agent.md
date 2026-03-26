@@ -34,12 +34,13 @@ tools:
       - operation (required): The action to perform.
         - 'list': Returns a list of all existing agents.
         - 'get': Retrieves detailed information about a specific agent. Requires 'agent_id'.
-        - 'create': Creates a new Looker AI Agent. Requires 'name'. Optional 'instructions'.
-        - 'update': Updates an existing Looker AI Agent. Requires 'agent_id'. Optional 'name', 'instructions'.
+        - 'create': Creates a new Looker AI Agent. Requires 'name'. Optional 'instructions', 'sources'.
+        - 'update': Updates an existing Looker AI Agent. Requires 'agent_id'. Optional 'name', 'instructions', 'sources'.
         - 'delete': Removes an existing agent. Requires 'agent_id'.
       - agent_id (optional): The unique identifier of the agent. Required for 'get', 'update', and 'delete' operations.
       - name (optional): The display name for the agent. Required for 'create' operation.
       - instructions (optional): The system prompt or instructions for the agent. Used for 'create' and 'update' operations.
+      - sources (optional): A list of JSON-encoded data sources for the agent. Each source should be a JSON string with 'model' and 'explore' keys.
 ```
 
 ## Parameters
@@ -50,6 +51,7 @@ tools:
 | `agent_id` | `string` | No | The ID of the agent. Required for `get`, `update`, and `delete` operations. |
 | `name` | `string` | No | The name of the agent. Required for `create` operation. |
 | `instructions` | `string` | No | The instructions (system prompt) for the agent. Used for `create` and `update` operations. |
+| `sources` | `array` | No | Optional. A list of JSON-encoded data sources (e.g., `["{\"model\": \"m\", \"explore\": \"e\"}"]`). |
 
 ## Operations
 
@@ -71,22 +73,29 @@ Retrieve details of a specific agent by its ID.
 ```
 
 ### Create Agent
-Create a new agent with a name and instructions.
+Create a new agent with a name, instructions, and data sources.
 ```json
 {
   "operation": "create",
   "name": "My AI Assistant",
-  "instructions": "You are a helpful data analyst. Always provide clear summaries."
+  "instructions": "You are a helpful data analyst. Always provide clear summaries.",
+  "sources": [
+    "{\"model\": \"thelook\", \"explore\": \"orders\"}",
+    "{\"model\": \"thelook\", \"explore\": \"users\"}"
+  ]
 }
 ```
 
 ### Update Agent
-Update an existing agent's instructions.
+Update an existing agent's instructions and sources.
 ```json
 {
   "operation": "update",
   "agent_id": "12345",
-  "instructions": "New updated instructions for the agent."
+  "instructions": "New updated instructions for the agent.",
+  "sources": [
+    "{\"model\": \"thelook\", \"explore\": \"inventory_items\"}"
+  ]
 }
 ```
 

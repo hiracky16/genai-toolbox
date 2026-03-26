@@ -15,6 +15,7 @@ package lookeragent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -73,7 +74,8 @@ func (cfg Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error)
 	agentIdParameter := parameters.NewStringParameterWithDefault("agent_id", "", "The ID of the agent. Required for `get`, `update`, and `delete` operations.")
 	nameParameter := parameters.NewStringParameterWithDefault("name", "", "The name of the agent. Required for `create` operation.")
 	instructionsParameter := parameters.NewStringParameterWithDefault("instructions", "", "The instructions (system prompt) for the agent. Used for `create` and `update` operations.")
-	params := parameters.Parameters{operationParameter, agentIdParameter, nameParameter, instructionsParameter}
+	sourcesParameter := parameters.NewArrayParameterWithDefault("sources", []any{}, "Optional. A list of JSON-encoded data sources for the agent (e.g., ['{\"model\": \"my_model\", \"explore\": \"my_explore\"}']).", parameters.NewStringParameter("source", "A JSON-encoded source object with 'model' and 'explore' keys."))
+	params := parameters.Parameters{operationParameter, agentIdParameter, nameParameter, instructionsParameter, sourcesParameter}
 
 	annotations := cfg.Annotations
 
@@ -127,6 +129,20 @@ func (t Tool) Invoke(ctx context.Context, resourceMgr tools.SourceProvider, para
 	agentId := mapParams["agent_id"].(string)
 	name := mapParams["name"].(string)
 	instructions := mapParams["instructions"].(string)
+	rawSources := mapParams["sources"].([]any)
+
+	var agentSources []v4.Source
+	for _, rs := range rawSources {
+		sStr, ok := rs.(string)
+		if !ok {
+			return nil, util.NewClientServerError("invalid source format: expected string", http.StatusBadRequest, nil)
+		}
+		var s v4.Source
+		if err := json.Unmarshal([]byte(sStr), &s); err != nil {
+			return nil, util.NewClientServerError(fmt.Sprintf("error parsing source JSON %q: %v", sStr, err), http.StatusBadRequest, err)
+		}
+		agentSources = append(agentSources, s)
+	}
 
 	switch operation {
 	case "list":
@@ -156,6 +172,9 @@ func (t Tool) Invoke(ctx context.Context, resourceMgr tools.SourceProvider, para
 				Instructions: &instructions,
 			}
 		}
+		if len(agentSources) > 0 {
+			body.Sources = &agentSources
+		}
 		resp, err := sdk.CreateAgent(body, "", source.LookerApiSettings())
 		if err != nil {
 			return nil, util.NewClientServerError(fmt.Sprintf("error making create_agent request: %s", err), http.StatusInternalServerError, err)
@@ -173,6 +192,9 @@ func (t Tool) Invoke(ctx context.Context, resourceMgr tools.SourceProvider, para
 			body.Context = &v4.Context{
 				Instructions: &instructions,
 			}
+		}
+		if len(agentSources) > 0 {
+			body.Sources = &agentSources
 		}
 		resp, err := sdk.UpdateAgent(agentId, body, "", source.LookerApiSettings())
 		if err != nil {
