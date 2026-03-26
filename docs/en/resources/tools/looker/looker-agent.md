@@ -10,7 +10,7 @@ aliases:
 
 # Looker Agent
 
-The `looker-agent` tool allows LLMs to manage Looker Agents. It supports listing, retrieving, creating, and deleting agents using the Looker Go SDK.
+The `looker-agent` tool allows LLMs to manage Looker Agents. It supports listing, retrieving, creating, updating, and deleting agents using the Looker Go SDK.
 
 It's compatible with the following sources:
 
@@ -28,25 +28,28 @@ tools:
     description: |
       Manage Looker AI Agents. This tool allows you to perform various operations on Looker Agents, 
       including listing all available agents, retrieving details for a specific agent, 
-      creating a new agent, and deleting an existing one.
+      creating a new agent, updating an existing one, and deleting an agent.
 
       Parameters:
       - operation (required): The action to perform.
-        - 'list': Returns a list of all existing agents. No other parameters needed.
+        - 'list': Returns a list of all existing agents.
         - 'get': Retrieves detailed information about a specific agent. Requires 'agent_id'.
-        - 'create': Creates a new Looker AI Agent. Requires 'name'.
+        - 'create': Creates a new Looker AI Agent. Requires 'name'. Optional 'instructions'.
+        - 'update': Updates an existing Looker AI Agent. Requires 'agent_id'. Optional 'name', 'instructions'.
         - 'delete': Removes an existing agent. Requires 'agent_id'.
-      - agent_id (optional): The unique identifier of the agent. Required for 'get' and 'delete' operations.
-      - name (optional): The display name for the new agent. Required for 'create' operation.
+      - agent_id (optional): The unique identifier of the agent. Required for 'get', 'update', and 'delete' operations.
+      - name (optional): The display name for the agent. Required for 'create' operation.
+      - instructions (optional): The system prompt or instructions for the agent. Used for 'create' and 'update' operations.
 ```
 
 ## Parameters
 
 | **Parameter** | **Type** | **Required** | **Description** |
 |:-------------|:--------:|:------------:|:----------------|
-| `operation` | `string` | Yes | The operation to perform. Must be one of: `list`, `get`, `create`, or `delete`. |
-| `agent_id` | `string` | No | The ID of the agent. Required for `get` and `delete` operations. |
+| `operation` | `string` | Yes | The operation to perform. Must be one of: `list`, `get`, `create`, `update`, or `delete`. |
+| `agent_id` | `string` | No | The ID of the agent. Required for `get`, `update`, and `delete` operations. |
 | `name` | `string` | No | The name of the agent. Required for `create` operation. |
+| `instructions` | `string` | No | The instructions (system prompt) for the agent. Used for `create` and `update` operations. |
 
 ## Operations
 
@@ -68,11 +71,22 @@ Retrieve details of a specific agent by its ID.
 ```
 
 ### Create Agent
-Create a new agent with the given name.
+Create a new agent with a name and instructions.
 ```json
 {
   "operation": "create",
-  "name": "My AI Assistant"
+  "name": "My AI Assistant",
+  "instructions": "You are a helpful data analyst. Always provide clear summaries."
+}
+```
+
+### Update Agent
+Update an existing agent's instructions.
+```json
+{
+  "operation": "update",
+  "agent_id": "12345",
+  "instructions": "New updated instructions for the agent."
 }
 ```
 
