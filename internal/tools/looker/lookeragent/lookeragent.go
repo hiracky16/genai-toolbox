@@ -126,25 +126,37 @@ func (t Tool) Invoke(ctx context.Context, resourceMgr tools.SourceProvider, para
 
 	mapParams := params.AsMap()
 	logger.DebugContext(ctx, fmt.Sprintf("%s params = ", t.Name), mapParams)
-	operation := mapParams["operation"].(string)
-	agentId := mapParams["agent_id"].(string)
-	name := mapParams["name"].(string)
-	instructions := mapParams["instructions"].(string)
-	rawSources := mapParams["sources"].([]any)
-	codeInterpreter, hasCodeInterpreter := mapParams["code_interpreter"].(bool)
+
+	var operation, agentId, name, instructions string
+	if v, ok := mapParams["operation"].(string); ok {
+		operation = v
+	}
+	if v, ok := mapParams["agent_id"].(string); ok {
+		agentId = v
+	}
+	if v, ok := mapParams["name"].(string); ok {
+		name = v
+	}
+	if v, ok := mapParams["instructions"].(string); ok {
+		instructions = v
+	}
 
 	var agentSources []v4.Source
-	for _, rs := range rawSources {
-		sStr, ok := rs.(string)
-		if !ok {
-			return nil, util.NewClientServerError("invalid source format: expected string", http.StatusBadRequest, nil)
+	if raw, ok := mapParams["sources"].([]any); ok {
+		for _, rs := range raw {
+			sStr, ok := rs.(string)
+			if !ok {
+				return nil, util.NewClientServerError("invalid source format: expected string", http.StatusBadRequest, nil)
+			}
+			var s v4.Source
+			if err := json.Unmarshal([]byte(sStr), &s); err != nil {
+				return nil, util.NewClientServerError(fmt.Sprintf("error parsing source JSON %q: %v", sStr, err), http.StatusBadRequest, err)
+			}
+			agentSources = append(agentSources, s)
 		}
-		var s v4.Source
-		if err := json.Unmarshal([]byte(sStr), &s); err != nil {
-			return nil, util.NewClientServerError(fmt.Sprintf("error parsing source JSON %q: %v", sStr, err), http.StatusBadRequest, err)
-		}
-		agentSources = append(agentSources, s)
 	}
+
+	codeInterpreter, hasCodeInterpreter := mapParams["code_interpreter"].(bool)
 
 	switch operation {
 	case "list":

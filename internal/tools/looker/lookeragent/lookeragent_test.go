@@ -19,9 +19,15 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/googleapis/genai-toolbox/internal/server"
+	"github.com/googleapis/genai-toolbox/internal/sources"
 	"github.com/googleapis/genai-toolbox/internal/testutils"
+	"github.com/googleapis/genai-toolbox/internal/tools"
 	lkr "github.com/googleapis/genai-toolbox/internal/tools/looker/lookeragent"
+	"github.com/googleapis/genai-toolbox/internal/util/parameters"
+	"github.com/looker-open-source/sdk-codegen/go/rtl"
+	v4 "github.com/looker-open-source/sdk-codegen/go/sdk/v4"
 )
 
 func TestParseFromYamlLookerAgent(t *testing.T) {
@@ -103,5 +109,215 @@ func TestFailParseFromYamlLookerAgent(t *testing.T) {
 				t.Fatalf("unexpected error string: got %q, want substring %q", errStr, tc.err)
 			}
 		})
+	}
+}
+
+type MockSource struct {
+	sources.Source
+}
+
+func (m MockSource) UseClientAuthorization() bool { return false }
+func (m MockSource) GetAuthTokenHeaderName() string { return "Authorization" }
+func (m MockSource) LookerApiSettings() *rtl.ApiSettings { return &rtl.ApiSettings{} }
+func (m MockSource) GetLookerSDK(string) (*v4.LookerSDK, error) {
+	return &v4.LookerSDK{}, nil
+}
+
+type MockSourceProvider struct {
+	tools.SourceProvider
+	source MockSource
+}
+
+func (m MockSourceProvider) GetSource(name string) (sources.Source, bool) {
+	return m.source, true
+}
+
+func TestInvokeLookerAgentValidation(t *testing.T) {
+	ctx, err := testutils.ContextWithNewLogger()
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+	
+	cfg := lkr.Config{
+		Name:        "agent_manage",
+		Type:        "looker-agent",
+		Source:      "my-instance",
+		Description: "test description",
+	}
+	
+	tool, err := cfg.Initialize(nil)
+	if err != nil {
+		t.Fatalf("failed to initialize tool: %v", err)
+	}
+
+	resourceMgr := MockSourceProvider{source: MockSource{}}
+
+	tcs := []struct {
+		desc    string
+		params  parameters.ParamValues
+		wantErr string
+	}{
+		{
+			desc: "missing agent_id for get",
+			params: parameters.ParamValues{
+				{Name: "operation", Value: "get"},
+			},
+			wantErr: "get operation: agent_id must be specified",
+		},
+		{
+			desc: "missing name for create",
+			params: parameters.ParamValues{
+				{Name: "operation", Value: "create"},
+			},
+			wantErr: "create operation: name must be specified",
+		},
+		{
+			desc: "missing agent_id for update",
+			params: parameters.ParamValues{
+				{Name: "operation", Value: "update"},
+			},
+			wantErr: "update operation: agent_id must be specified",
+		},
+		{
+			desc: "missing agent_id for delete",
+			params: parameters.ParamValues{
+				{Name: "operation", Value: "delete"},
+			},
+			wantErr: "delete operation: agent_id must be specified",
+		},
+		{
+			desc: "invalid source format",
+			params: parameters.ParamValues{
+				{Name: "operation", Value: "create"},
+				{Name: "name", Value: "test"},
+				{Name: "sources", Value: []any{123}}, // Should be string
+			},
+			wantErr: "invalid source format: expected string",
+		},
+		{
+			desc: "invalid source JSON",
+			params: parameters.ParamValues{
+				{Name: "operation", Value: "create"},
+				{Name: "name", Value: "test"},
+				{Name: "sources", Value: []any{"invalid json"}},
+			},
+			wantErr: "error parsing source JSON",
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(tc.desc, func(t *testing.T) {
+			_, err := tool.Invoke(ctx, resourceMgr, tc.params, "")
+			if err == nil {
+				t.Fatalf("expect error, got nil")
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("unexpected error: got %q, want substring %q", err.Error(), tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestManifestLookerAgent(t *testing.T) {
+	cfg := lkr.Config{
+		Name:        "agent_manage",
+		Type:        "looker-agent",
+		Source:      "my-instance",
+		Description: "test description",
+	}
+	
+	tool, err := cfg.Initialize(nil)
+	if err != nil {
+		t.Fatalf("failed to initialize tool: %v", err)
+	}
+
+	manifest := tool.Manifest()
+	if manifest.Description != cfg.Description {
+		t.Errorf("manifest description mismatch: got %q, want %q", manifest.Description, cfg.Description)
+	}
+
+	expectedParams := []string{"operation", "agent_id", "name", "instructions", "sources", "code_interpreter"}
+	for _, p := range expectedParams {
+		found := false
+		for _, mp := range manifest.Parameters {
+			if mp.Name == p {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected parameter %q not found in manifest", p)
+		}
+	}
+}
+
+func TestMcpManifestLookerAgent(t *testing.T) {
+	cfg := lkr.Config{
+		Name:        "agent_manage",
+		Type:        "looker-agent",
+		Source:      "my-instance",
+		Description: "test description",
+	}
+	
+	tool, err := cfg.Initialize(nil)
+	if err != nil {
+		t.Fatalf("failed to initialize tool: %v", err)
+	}
+
+	mcp := tool.McpManifest()
+	if mcp.Name != cfg.Name {
+		t.Errorf("mcp manifest name mismatch: got %q, want %q", mcp.Name, cfg.Name)
+	}
+
+	// Verify parameter existence and basic properties in MCP InputSchema
+	properties := mcp.InputSchema.Properties
+	expectedParams := []string{"operation", "agent_id", "name", "instructions", "sources", "code_interpreter"}
+	for _, p := range expectedParams {
+		if _, ok := properties[p]; !ok {
+			t.Errorf("parameter %q not found in MCP properties", p)
+		}
+	}
+
+	// Verify allowed values for operation via GetParameters
+	params := tool.GetParameters()
+	var opParam *parameters.StringParameter
+	for _, p := range params {
+		if p.GetName() == "operation" {
+			opParam = p.(*parameters.StringParameter)
+			break
+		}
+	}
+	if opParam == nil {
+		t.Fatal("operation parameter not found via GetParameters")
+	}
+	
+	gotAllowed := opParam.GetAllowedValues()
+	wantAllowed := []any{"list", "get", "create", "update", "delete"}
+	if diff := cmp.Diff(wantAllowed, gotAllowed, cmpopts.SortSlices(func(a, b any) bool { return a.(string) < b.(string) })); diff != "" {
+		t.Errorf("operation allowed values mismatch: diff %v", diff)
+	}
+
+	// Verify default values in MCP manifest
+	expectedDefaults := map[string]any{
+		"agent_id":         "",
+		"name":             "",
+		"instructions":     "",
+		"sources":          []any{},
+		"code_interpreter": false,
+	}
+
+	for param, wantDefault := range expectedDefaults {
+		prop, ok := properties[param]
+		if !ok {
+			continue
+		}
+		gotDefault := prop.Default
+		if gotDefault == nil {
+			t.Errorf("parameter %q should have default value in MCP manifest", param)
+			continue
+		}
+		if diff := cmp.Diff(wantDefault, gotDefault); diff != "" {
+			t.Errorf("default value mismatch for %q in MCP manifest: diff %v", param, diff)
+		}
 	}
 }
