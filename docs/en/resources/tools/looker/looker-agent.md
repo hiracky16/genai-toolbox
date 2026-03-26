@@ -34,13 +34,14 @@ tools:
       - operation (required): The action to perform.
         - 'list': Returns a list of all existing agents.
         - 'get': Retrieves detailed information about a specific agent. Requires 'agent_id'.
-        - 'create': Creates a new Looker AI Agent. Requires 'name'. Optional 'instructions', 'sources'.
-        - 'update': Updates an existing Looker AI Agent. Requires 'agent_id'. Optional 'name', 'instructions', 'sources'.
+        - 'create': Creates a new Looker AI Agent. Requires 'name'. Optional 'instructions', 'sources', 'code_interpreter'.
+        - 'update': Updates an existing Looker AI Agent. Requires 'agent_id'. Optional 'name', 'instructions', 'sources', 'code_interpreter'.
         - 'delete': Removes an existing agent. Requires 'agent_id'.
       - agent_id (optional): The unique identifier of the agent. Required for 'get', 'update', and 'delete' operations.
       - name (optional): The display name for the agent. Required for 'create' operation.
       - instructions (optional): The system prompt or instructions for the agent. Used for 'create' and 'update' operations.
       - sources (optional): A list of JSON-encoded data sources for the agent. Each source should be a JSON string with 'model' and 'explore' keys.
+      - code_interpreter (optional): A boolean value to enable or disable Code Interpreter for this Agent.
 ```
 
 ## Parameters
@@ -52,6 +53,7 @@ tools:
 | `name` | `string` | No | The name of the agent. Required for `create` operation. |
 | `instructions` | `string` | No | The instructions (system prompt) for the agent. Used for `create` and `update` operations. |
 | `sources` | `array` | No | Optional. A list of JSON-encoded data sources (e.g., `["{\"model\": \"m\", \"explore\": \"e\"}"]`). |
+| `code_interpreter` | `boolean` | No | Optional. Enables Code Interpreter for this Agent. |
 
 ## Operations
 
@@ -73,29 +75,27 @@ Retrieve details of a specific agent by its ID.
 ```
 
 ### Create Agent
-Create a new agent with a name, instructions, and data sources.
+Create a new agent with a name, instructions, data sources, and Code Interpreter enabled.
 ```json
 {
   "operation": "create",
   "name": "My AI Assistant",
   "instructions": "You are a helpful data analyst. Always provide clear summaries.",
   "sources": [
-    "{\"model\": \"thelook\", \"explore\": \"orders\"}",
-    "{\"model\": \"thelook\", \"explore\": \"users\"}"
-  ]
+    "{\"model\": \"thelook\", \"explore\": \"orders\"}"
+  ],
+  "code_interpreter": true
 }
 ```
 
 ### Update Agent
-Update an existing agent's instructions and sources.
+Update an existing agent's instructions and disable Code Interpreter.
 ```json
 {
   "operation": "update",
   "agent_id": "12345",
   "instructions": "New updated instructions for the agent.",
-  "sources": [
-    "{\"model\": \"thelook\", \"explore\": \"inventory_items\"}"
-  ]
+  "code_interpreter": false
 }
 ```
 

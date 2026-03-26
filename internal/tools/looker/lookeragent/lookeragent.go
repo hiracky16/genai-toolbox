@@ -75,7 +75,8 @@ func (cfg Config) Initialize(srcs map[string]sources.Source) (tools.Tool, error)
 	nameParameter := parameters.NewStringParameterWithDefault("name", "", "The name of the agent. Required for `create` operation.")
 	instructionsParameter := parameters.NewStringParameterWithDefault("instructions", "", "The instructions (system prompt) for the agent. Used for `create` and `update` operations.")
 	sourcesParameter := parameters.NewArrayParameterWithDefault("sources", []any{}, "Optional. A list of JSON-encoded data sources for the agent (e.g., ['{\"model\": \"my_model\", \"explore\": \"my_explore\"}']).", parameters.NewStringParameter("source", "A JSON-encoded source object with 'model' and 'explore' keys."))
-	params := parameters.Parameters{operationParameter, agentIdParameter, nameParameter, instructionsParameter, sourcesParameter}
+	codeInterpreterParameter := parameters.NewBooleanParameterWithDefault("code_interpreter", false, "Optional. Enables Code Interpreter for this Agent. Used for `create` and `update` operations.")
+	params := parameters.Parameters{operationParameter, agentIdParameter, nameParameter, instructionsParameter, sourcesParameter, codeInterpreterParameter}
 
 	annotations := cfg.Annotations
 
@@ -130,6 +131,7 @@ func (t Tool) Invoke(ctx context.Context, resourceMgr tools.SourceProvider, para
 	name := mapParams["name"].(string)
 	instructions := mapParams["instructions"].(string)
 	rawSources := mapParams["sources"].([]any)
+	codeInterpreter, hasCodeInterpreter := mapParams["code_interpreter"].(bool)
 
 	var agentSources []v4.Source
 	for _, rs := range rawSources {
@@ -175,6 +177,9 @@ func (t Tool) Invoke(ctx context.Context, resourceMgr tools.SourceProvider, para
 		if len(agentSources) > 0 {
 			body.Sources = &agentSources
 		}
+		if hasCodeInterpreter {
+			body.CodeInterpreter = &codeInterpreter
+		}
 		resp, err := sdk.CreateAgent(body, "", source.LookerApiSettings())
 		if err != nil {
 			return nil, util.NewClientServerError(fmt.Sprintf("error making create_agent request: %s", err), http.StatusInternalServerError, err)
@@ -195,6 +200,9 @@ func (t Tool) Invoke(ctx context.Context, resourceMgr tools.SourceProvider, para
 		}
 		if len(agentSources) > 0 {
 			body.Sources = &agentSources
+		}
+		if hasCodeInterpreter {
+			body.CodeInterpreter = &codeInterpreter
 		}
 		resp, err := sdk.UpdateAgent(agentId, body, "", source.LookerApiSettings())
 		if err != nil {
